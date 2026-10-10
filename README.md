@@ -5,41 +5,21 @@ NetCharge 是用 Swift 编写的 macOS 菜单栏工具：菜单栏以红点和�
 ## 系统要求
 
 - macOS 13 或更新版本的 Apple Silicon MacBook。
-- Xcode 15 或更新版本，或包含 Swift 5.9 及以上版本的命令行工具。运行 `swift --version` 可检查。
 - 充电上限功能要求固件允许读写 `bfF0`、`bfD0`、`bfE0` SMC 键。网络速度显示不依赖这些键。
 
-## 从源码安装
+## 下载安装（无需构建）
 
-1. 安装 Xcode 命令行工具（如果已经安装，可跳过）：
+1. 下载 [NetCharge macOS Apple Silicon v0.1.2](downloads/NetCharge-macOS-arm64-v0.1.2.zip)，双击 ZIP 解压，得到 `NetCharge.app`。无需安装 Xcode、Swift 或 Git。
+2. 如果已运行旧版本，先在菜单栏面板中点击「退出 NetCharge」。将解压得到的 `NetCharge.app` 拖入「应用程序」文件夹；Finder 提示时选择「替换」。
+3. 从「应用程序」打开 NetCharge。它只显示在菜单栏，不显示 Dock 图标。
 
-   ```bash
-   xcode-select --install
-   ```
+此安装包经过本机临时签名，**未经过 Apple 公证**。如果 macOS 阻止首次打开，请先确认下载来源，再按 [Apple 的说明](https://support.apple.com/102445) 到「系统设置 → 隐私与安全性」选择「仍要打开」。无需关闭 Gatekeeper。
 
-2. 使用已配置 GitHub SSH 密钥的终端克隆仓库、运行测试并构建 App：
+安装包的 SHA-256：
 
-   ```bash
-   git clone git@github.com:mohuwamg/NetCharge.git
-   cd NetCharge
-   swift test
-   bash scripts/build-app.sh
-   ```
-
-   构建结果是 `dist/NetCharge.app`。构建脚本会打包所选图标和充电控制程序，并对 App 进行本机临时签名；它没有经过 Apple 公证。
-
-3. 如果已运行旧版本，先在其菜单中点击「退出 NetCharge」。打开构建目录：
-
-   ```bash
-   open dist
-   ```
-
-   将 `NetCharge.app` 拖入「应用程序」文件夹；Finder 提示时选择「替换」。完成复制后启动：
-
-   ```bash
-   open /Applications/NetCharge.app
-   ```
-
-   NetCharge 只显示在菜单栏，不显示 Dock 图标。也可以先用 `open dist/NetCharge.app` 试运行，确认界面后再复制到「应用程序」。
+```text
+b27a46d642022ff0c79f3f80134847ac8fd67e346cd2ef92295bd34336865f1a
+```
 
 ## 首次启用充电上限
 
@@ -59,14 +39,7 @@ NetCharge 是用 Swift 编写的 macOS 菜单栏工具：菜单栏以红点和�
 
 ## 更新
 
-重新拉取源码并构建，退出旧版 App，然后在 Finder 中用新的 `dist/NetCharge.app` 替换「应用程序」里的版本：
-
-```bash
-git pull --ff-only
-swift test
-bash scripts/build-app.sh
-open dist
-```
+从 [downloads](downloads/) 下载新版 ZIP，退出旧版 App，解压后在 Finder 中替换「应用程序」里的 `NetCharge.app`。
 
 替换 App 后运行以下命令更新后台服务，再启动 App，避免 App 与服务版本不一致：
 
