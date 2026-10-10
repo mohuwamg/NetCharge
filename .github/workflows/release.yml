@@ -1,0 +1,91 @@
+name: Build and release macOS app
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - Package.swift
+      - Sources/**
+      - Tests/**
+      - design/**
+      - scripts/**
+      - downloads/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: netcharge-release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - name: Check out source and release history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build and verify Apple Silicon app
+        run: |
+          test "$(uname -m)" = arm64
+          bash scripts/build-app.sh
+          file dist/NetCharge.app/Contents/MacOS/NetCharge | grep -q arm64
+          codesign --verify --deep --strict dist/NetCharge.app
+
+          version="$(plutil -extract CFBundleShortVersionString raw dist/NetCharge.app/Contents/Info.plist)"
+          tag="v${version}-build.${GITHUB_RUN_NUMBER}"
+          asset=NetCharge-macOS-arm64.zip
+          ditto -c -k --sequesterRsrc --keepParent dist/NetCharge.app "dist/$asset"
+          unzip -tq "dist/$asset"
+          (cd dist && shasum -a 256 "$asset" > "$asset.sha256")
+
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Describe changes and publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous_tag="$(git describe --tags --abbrev=0 --match 'v*' "${GITHUB_SHA}^" 2>/dev/null || true)"
+          if [ -n "$previous_tag" ]; then
+            changes="$previous_tag..$GITHUB_SHA"
+            git diff --name-only "$previous_tag" "$GITHUB_SHA" > dist/changed-files.txt
+          else
+            changes="$GITHUB_SHA"
+            git ls-tree -r --name-only "$GITHUB_SHA" > dist/changed-files.txt
+          fi
+
+          {
+            echo '## 本次修改'
+            git log --no-merges --format='- %s (`%h`)' "$changes"
+            echo
+            echo '## 修改文件'
+            sed 's/^/- /' dist/changed-files.txt
+            echo
+            echo '## 下载与校验'
+            echo '下载下方 NetCharge-macOS-arm64.zip，解压后把 NetCharge.app 放入「应用程序」。'
+            echo 'SHA-256：'
+            echo '```text'
+            cat dist/NetCharge-macOS-arm64.zip.sha256
+            echo '```'
+            if [ -n "$previous_tag" ]; then
+              echo
+              echo "[比较全部改动](https://github.com/$GITHUB_REPOSITORY/compare/$previous_tag...$RELEASE_TAG)"
+            fi
+          } > dist/release-notes.md
+
+          gh release create "$RELEASE_TAG" \
+            dist/NetCharge-macOS-arm64.zip \
+            dist/NetCharge-macOS-arm64.zip.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "NetCharge $APP_VERSION (build $GITHUB_RUN_NUMBER)" \
+            --notes-file dist/release-notes.md \
+            --latest
