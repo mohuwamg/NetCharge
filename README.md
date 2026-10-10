@@ -9,7 +9,7 @@ NetCharge 是用 Swift 编写的 macOS 菜单栏工具：菜单栏以红点和�
 
 ## 下载安装（无需构建）
 
-1. 下载 [NetCharge macOS Apple Silicon v0.1.2](downloads/NetCharge-macOS-arm64-v0.1.2.zip)，双击 ZIP 解压，得到 `NetCharge.app`。无需安装 Xcode、Swift 或 Git。
+1. [直接下载 NetCharge macOS Apple Silicon v0.1.2](https://github.com/mohuwamg/NetCharge/raw/refs/heads/main/downloads/NetCharge-macOS-arm64-v0.1.2.zip)，双击 ZIP 解压，得到 `NetCharge.app`。无需安装 Xcode、Swift 或 Git。
 2. 如果已运行旧版本，先在菜单栏面板中点击「退出 NetCharge」。将解压得到的 `NetCharge.app` 拖入「应用程序」文件夹；Finder 提示时选择「替换」。
 3. 从「应用程序」打开 NetCharge。它只显示在菜单栏，不显示 Dock 图标。
 
