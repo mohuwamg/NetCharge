@@ -152,11 +152,12 @@ private final class SpeedStatusView: NSView {
 }
 
 @MainActor
-private final class NetChargeDelegate: NSObject, NSApplicationDelegate {
+private final class NetChargeDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let model = DashboardModel()
     private let popover = NSPopover()
     private let statusView = SpeedStatusView()
     private var statusItem: NSStatusItem?
+    private var outsideClickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: statusView.requiredWidth)
@@ -170,6 +171,7 @@ private final class NetChargeDelegate: NSObject, NSApplicationDelegate {
         button.setAccessibilityLabel("上传 0 B/s，下载 0 B/s")
 
         popover.behavior = .transient
+        popover.delegate = self
         popover.contentViewController = NSHostingController(rootView: DashboardView(model: model))
         popover.contentSize = NSSize(width: 368, height: 360)
 
@@ -191,7 +193,30 @@ private final class NetChargeDelegate: NSObject, NSApplicationDelegate {
         } else {
             model.refresh()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            startOutsideClickMonitor()
         }
+    }
+
+    private func startOutsideClickMonitor() {
+        guard outsideClickMonitor == nil else { return }
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.popover.close()
+            }
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        if let outsideClickMonitor {
+            NSEvent.removeMonitor(outsideClickMonitor)
+            self.outsideClickMonitor = nil
+        }
+    }
+
+    func applicationDidResignActive(_ notification: Notification) {
+        popover.close()
     }
 }
 
