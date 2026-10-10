@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#263763"/>
+      <stop offset="0.55" stop-color="#151f3d"/>
+      <stop offset="1" stop-color="#09142b"/>
+    </linearGradient>
+    <linearGradient id="dial" x1="0" x2="1">
+      <stop stop-color="#238cff"/>
+      <stop offset="0.52" stop-color="#6bd4ff"/>
+      <stop offset="1" stop-color="#ff665f"/>
+    </linearGradient>
+    <linearGradient id="battery" x1="0" x2="1">
+      <stop stop-color="#45deb7"/>
+      <stop offset="1" stop-color="#78e9a1"/>
+    </linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+  <rect x="67" y="74" width="890" height="890" rx="216" fill="#050c1d" opacity="0.45" filter="url(#shadow)"/>
+  <rect x="64" y="64" width="896" height="896" rx="216" fill="url(#tile)" stroke="#536b9b" stroke-opacity="0.42" stroke-width="8"/>
+  <path d="M 240 625 A 272 272 0 0 1 784 625" fill="none" stroke="#314163" stroke-width="67" stroke-linecap="round"/>
+  <path d="M 240 625 A 272 272 0 0 1 728 464" fill="none" stroke="url(#dial)" stroke-width="56" stroke-linecap="round"/>
+  <path d="M 511 589 L 658 363 L 552 620 Z" fill="#f8fbff"/>
+  <circle cx="512" cy="592" r="53" fill="#edf7ff"/>
+  <circle cx="512" cy="592" r="24" fill="#1c2b50"/>
+  <rect x="338" y="745" width="333" height="126" rx="37" fill="none" stroke="#f5f9ff" stroke-width="23"/>
+  <rect x="672" y="785" width="28" height="45" rx="11" fill="#f5f9ff"/>
+  <rect x="357" y="764" width="228" height="88" rx="21" fill="url(#battery)"/>
+  <rect x="594" y="764" width="17" height="88" rx="8" fill="#f5f9ff"/>
+</svg>
