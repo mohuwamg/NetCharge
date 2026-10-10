@@ -9,17 +9,13 @@ NetCharge 是用 Swift 编写的 macOS 菜单栏工具：菜单栏以红点和�
 
 ## 下载安装（无需构建）
 
-1. [直接下载 NetCharge macOS Apple Silicon v0.1.2](https://github.com/mohuwamg/NetCharge/raw/refs/heads/main/downloads/NetCharge-macOS-arm64-v0.1.2.zip)，双击 ZIP 解压，得到 `NetCharge.app`。无需安装 Xcode、Swift 或 Git。
+1. 在 [GitHub Releases](https://github.com/mohuwamg/NetCharge/releases/latest) 下载最新的 `NetCharge-macOS-arm64.zip`，双击解压得到 `NetCharge.app`。无需安装 Xcode、Swift 或 Git。
 2. 如果已运行旧版本，先在菜单栏面板中点击「退出 NetCharge」。将解压得到的 `NetCharge.app` 拖入「应用程序」文件夹；Finder 提示时选择「替换」。
 3. 从「应用程序」打开 NetCharge。它只显示在菜单栏，不显示 Dock 图标。
 
 此安装包经过本机临时签名，**未经过 Apple 公证**。如果 macOS 阻止首次打开，请先确认下载来源，再按 [Apple 的说明](https://support.apple.com/102445) 到「系统设置 → 隐私与安全性」选择「仍要打开」。无需关闭 Gatekeeper。
 
-安装包的 SHA-256：
-
-```text
-b27a46d642022ff0c79f3f80134847ac8fd67e346cd2ef92295bd34336865f1a
-```
+每个 Release 还附有同名 `.sha256` 校验文件和「本次修改」说明。`main` 分支更新后，GitHub Actions 会自动运行测试、构建 Apple Silicon 版 App 并发布新 Release；安装包不保存在源码仓库中。
 
 ## 首次启用充电上限
 
@@ -39,7 +35,7 @@ b27a46d642022ff0c79f3f80134847ac8fd67e346cd2ef92295bd34336865f1a
 
 ## 更新
 
-从 [downloads](downloads/) 下载新版 ZIP，退出旧版 App，解压后在 Finder 中替换「应用程序」里的 `NetCharge.app`。
+从 [GitHub Releases](https://github.com/mohuwamg/NetCharge/releases/latest) 下载新版 ZIP，退出旧版 App，解压后在 Finder 中替换「应用程序」里的 `NetCharge.app`。
 
 替换 App 后运行以下命令更新后台服务，再启动 App，避免 App 与服务版本不一致：
 
