@@ -46,6 +46,9 @@ jobs:
           unzip -tq "dist/$asset"
           (cd dist && shasum -a 256 "$asset" > "$asset.sha256")
 
+          bash scripts/build-dmg.sh
+          (cd dist && shasum -a 256 NetCharge-macOS-arm64.dmg > NetCharge-macOS-arm64.dmg.sha256)
+
           echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
           echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
@@ -70,9 +73,11 @@ jobs:
             sed 's/^/- /' dist/changed-files.txt
             echo
             echo '## 下载与校验'
-            echo '下载下方 NetCharge-macOS-arm64.zip，解压后把 NetCharge.app 放入「应用程序」。'
+            echo '下载下方 NetCharge-macOS-arm64.dmg，打开后把 NetCharge.app 拖入「应用程序」；也可以下载 ZIP 解压安装。'
+            echo 'Homebrew 安装：先执行 `brew tap mohuwamg/netcharge https://github.com/mohuwamg/NetCharge.git`，再执行 `brew install --cask mohuwamg/netcharge/netcharge`。'
             echo 'SHA-256：'
             echo '```text'
+            cat dist/NetCharge-macOS-arm64.dmg.sha256
             cat dist/NetCharge-macOS-arm64.zip.sha256
             echo '```'
             if [ -n "$previous_tag" ]; then
@@ -82,6 +87,8 @@ jobs:
           } > dist/release-notes.md
 
           gh release create "$RELEASE_TAG" \
+            dist/NetCharge-macOS-arm64.dmg \
+            dist/NetCharge-macOS-arm64.dmg.sha256 \
             dist/NetCharge-macOS-arm64.zip \
             dist/NetCharge-macOS-arm64.zip.sha256 \
             --repo "$GITHUB_REPOSITORY" \
@@ -89,3 +96,14 @@ jobs:
             --title "NetCharge $APP_VERSION (build $GITHUB_RUN_NUMBER)" \
             --notes-file dist/release-notes.md \
             --latest
+
+      - name: Update Homebrew cask after publishing Release
+        run: |
+          dmg_sha="$(shasum -a 256 dist/NetCharge-macOS-arm64.dmg | cut -d ' ' -f 1)"
+          bash scripts/update-cask.sh "${RELEASE_TAG#v}" "$dmg_sha"
+          git add Casks/netcharge.rb
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "chore: update Homebrew cask for $RELEASE_TAG"
+          git pull --rebase origin main
+          git push origin HEAD:main
