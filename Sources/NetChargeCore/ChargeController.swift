@@ -73,22 +73,24 @@ public final class ChargeController {
     public func setLimit(_ limit: Int) throws -> ChargeState {
         guard (10...100).contains(limit) else { throw ChargeError.invalidLimit }
         let previous = try readState()
+        if limit == 100 && !previous.active { return previous }
+        if previous.active && previous.upperLimit == limit && previous.lowerLimit == max(0, limit - 2) {
+            return previous
+        }
         if limit == 100 {
-            if previous.active { try smc.write(activation, bytes: [0]) }
+            try smc.write(activation, bytes: [0])
         } else {
             let lowerLimit = max(0, limit - 2)
-            if !previous.active || previous.upperLimit != limit || previous.lowerLimit != lowerLimit {
-                // Firmware requires deactivation before changing either bound.
-                do {
-                    try smc.write(activation, bytes: [0])
-                    try smc.write(upper, bytes: Self.encodePercent(limit))
-                    try smc.write(lower, bytes: Self.encodePercent(lowerLimit))
-                    try smc.write(activation, bytes: [2])
-                } catch {
-                    // Keep the limit inactive after a partial update. Never report success.
-                    try? smc.write(activation, bytes: [0])
-                    throw error
-                }
+            // Firmware requires deactivation before changing either bound.
+            do {
+                try smc.write(activation, bytes: [0])
+                try smc.write(upper, bytes: Self.encodePercent(limit))
+                try smc.write(lower, bytes: Self.encodePercent(lowerLimit))
+                try smc.write(activation, bytes: [2])
+            } catch {
+                // Keep the limit inactive after a partial update. Never report success.
+                try? smc.write(activation, bytes: [0])
+                throw error
             }
         }
         let current = try readState()

@@ -18,6 +18,8 @@ final class DashboardModel: ObservableObject {
     @Published var message: String?
 
     private let network = NetworkMonitor()
+    private var currentRates = NetworkRates(interface: "—", downloadBytesPerSecond: 0, uploadBytesPerSecond: 0)
+    private var isPopoverVisible = false
     private var ticks = 0
     private var timer: Timer?
     var onRatesChanged: ((NetworkRates) -> Void)?
@@ -29,19 +31,33 @@ final class DashboardModel: ObservableObject {
     init() {
         refresh()
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+            MainActor.assumeIsolated { self?.refresh() }
         }
+        timer.tolerance = 0.2
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }
 
     func refresh() {
         if let sample = network.sample() {
-            rates = sample
+            currentRates = sample
+            if isPopoverVisible { rates = sample }
             onRatesChanged?(sample)
         }
         ticks += 1
-        guard ticks == 1 || ticks.isMultiple(of: 5) else { return }
+        if isPopoverVisible && ticks.isMultiple(of: 5) { refreshDetails() }
+    }
+
+    func setPopoverVisible(_ visible: Bool) {
+        isPopoverVisible = visible
+        if visible {
+            rates = currentRates
+            ticks = 0
+            refreshDetails()
+        }
+    }
+
+    private func refreshDetails() {
         battery = BatteryMonitor.read()
         if let data = try? Data(contentsOf: URL(fileURLWithPath: statusPath)),
            let report = try? JSONDecoder().decode(HelperReport.self, from: data),
@@ -83,7 +99,7 @@ final class DashboardModel: ObservableObject {
             busy = false
             message = result
             ticks = 0
-            refresh()
+            refreshDetails()
         }
     }
 
@@ -127,10 +143,17 @@ private final class SpeedStatusView: NSView {
         return max(76, ceil(textWidth) + 22)
     }
 
-    func update(_ rates: NetworkRates) {
-        upload = SpeedFormat.string(rates.uploadBytesPerSecond)
-        download = SpeedFormat.string(rates.downloadBytesPerSecond)
+    var accessibilityDescription: String { "上传 \(upload)，下载 \(download)" }
+
+    @discardableResult
+    func update(_ rates: NetworkRates) -> Bool {
+        let newUpload = SpeedFormat.string(rates.uploadBytesPerSecond)
+        let newDownload = SpeedFormat.string(rates.downloadBytesPerSecond)
+        guard newUpload != upload || newDownload != download else { return false }
+        upload = newUpload
+        download = newDownload
         needsDisplay = true
+        return true
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -177,11 +200,10 @@ private final class NetChargeDelegate: NSObject, NSApplicationDelegate, NSPopove
 
         model.onRatesChanged = { [weak self] rates in
             guard let self, let item = self.statusItem else { return }
-            self.statusView.update(rates)
-            item.length = self.statusView.requiredWidth
-            item.button?.setAccessibilityLabel(
-                "上传 \(SpeedFormat.string(rates.uploadBytesPerSecond))，下载 \(SpeedFormat.string(rates.downloadBytesPerSecond))"
-            )
+            guard self.statusView.update(rates) else { return }
+            let width = self.statusView.requiredWidth
+            if item.length != width { item.length = width }
+            item.button?.setAccessibilityLabel(self.statusView.accessibilityDescription)
         }
         statusView.update(model.rates)
     }
@@ -191,7 +213,7 @@ private final class NetChargeDelegate: NSObject, NSApplicationDelegate, NSPopove
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            model.refresh()
+            model.setPopoverVisible(true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             startOutsideClickMonitor()
         }
@@ -209,6 +231,7 @@ private final class NetChargeDelegate: NSObject, NSApplicationDelegate, NSPopove
     }
 
     func popoverDidClose(_ notification: Notification) {
+        model.setPopoverVisible(false)
         if let outsideClickMonitor {
             NSEvent.removeMonitor(outsideClickMonitor)
             self.outsideClickMonitor = nil
@@ -270,7 +293,6 @@ private struct DashboardView: View {
             }
             .padding(14)
             .frame(width: 340)
-            .onAppear { model.refresh() }
     }
 }
 

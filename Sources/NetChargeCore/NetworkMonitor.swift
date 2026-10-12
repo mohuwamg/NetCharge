@@ -16,15 +16,26 @@ public struct NetworkRates {
 
 public final class NetworkMonitor {
     private var previous: (interface: String, received: UInt64, sent: UInt64, uptime: TimeInterval)?
+    private var cachedInterface: String?
+    private var cachedIndex: UInt32 = 0
+    private var nextInterfaceRefresh: TimeInterval = 0
+    private var counterBuffer: [UInt8] = []
 
     public init() {}
 
     public func sample() -> NetworkRates? {
-        guard let name = Self.primaryInterface(), let counters = Self.counters(for: name) else {
+        let now = ProcessInfo.processInfo.systemUptime
+        if cachedInterface == nil || now >= nextInterfaceRefresh {
+            cachedInterface = Self.primaryInterface()
+            cachedIndex = cachedInterface.map { if_nametoindex($0) } ?? 0
+            nextInterfaceRefresh = now + 5
+        }
+        guard let name = cachedInterface, cachedIndex != 0,
+              let counters = counters(for: cachedIndex) else {
+            cachedInterface = nil
             previous = nil
             return nil
         }
-        let now = ProcessInfo.processInfo.systemUptime
         defer { previous = (name, counters.received, counters.sent, now) }
         guard let prior = previous, prior.interface == name,
               counters.received >= prior.received, counters.sent >= prior.sent,
@@ -88,24 +99,31 @@ public final class NetworkMonitor {
         return nil
     }
 
-    private static func counters(for name: String) -> (received: UInt64, sent: UInt64)? {
-        let index = if_nametoindex(name)
-        guard index != 0 else { return nil }
+    private func counters(for index: UInt32) -> (received: UInt64, sent: UInt64)? {
         var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, Int32(index)]
-        var size = 0
-        guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return nil }
-        var buffer = [UInt8](repeating: 0, count: size)
-        guard sysctl(&mib, u_int(mib.count), &buffer, &size, nil, 0) == 0 else { return nil }
+        if counterBuffer.isEmpty {
+            var size = 0
+            guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return nil }
+            counterBuffer = [UInt8](repeating: 0, count: size)
+        }
+        var size = counterBuffer.count
+        if sysctl(&mib, u_int(mib.count), &counterBuffer, &size, nil, 0) != 0 {
+            guard errno == ENOMEM,
+                  sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0,
+                  size > counterBuffer.count else { return nil }
+            counterBuffer = [UInt8](repeating: 0, count: size)
+            guard sysctl(&mib, u_int(mib.count), &counterBuffer, &size, nil, 0) == 0 else { return nil }
+        }
         var offset = 0
         while offset + MemoryLayout<if_msghdr>.size <= size {
-            let header: if_msghdr = buffer.withUnsafeBytes { source in
+            let header: if_msghdr = counterBuffer.withUnsafeBytes { source in
                 source.loadUnaligned(fromByteOffset: offset, as: if_msghdr.self)
             }
             let messageLength = Int(header.ifm_msglen)
             guard messageLength > 0, offset + messageLength <= size else { return nil }
             if Int32(header.ifm_type) == RTM_IFINFO2,
                offset + MemoryLayout<if_msghdr2>.size <= size {
-                let detail: if_msghdr2 = buffer.withUnsafeBytes { source in
+                let detail: if_msghdr2 = counterBuffer.withUnsafeBytes { source in
                     source.loadUnaligned(fromByteOffset: offset, as: if_msghdr2.self)
                 }
                 if UInt32(detail.ifm_index) == index {

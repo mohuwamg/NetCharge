@@ -53,6 +53,10 @@ DMG、ZIP 和 Homebrew 安装的 App 都经过临时签名，**未经过 Apple �
 
 若固件不支持这些键或拒绝写入，应用会报告错误。控制服务安装后每 60 秒核对一次固件上限，状态保存在 `/Library/Application Support/NetCharge/status.json`。
 
+## 资源消耗
+
+菜单栏每秒读取一次网络字节计数并更新速度；网络接口每 5 秒重新选择一次，切换网络时显示可能有最多约 5 秒延迟。电池状态和控制服务状态只在面板打开时读取，之后每 5 秒更新一次。菜单栏显示值不变时不重新绘制。充电控制服务每 60 秒检查一次固件设置，已符合目标上限时不重复写入。
+
 ## 更新
 
 从 [GitHub Releases](https://github.com/mohuwamg/NetCharge/releases/latest) 下载新版 DMG，退出旧版 App，打开 DMG 后在 Finder 中替换「应用程序」里的 `NetCharge.app`。通过 Homebrew 安装的用户则使用上面的 `brew upgrade --cask` 命令。

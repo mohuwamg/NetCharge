@@ -7,8 +7,12 @@ final class ChargeControllerTests: XCTestCase {
             "bfF0": [2], "bfD0": [80, 0, 0, 0], "bfE0": [78, 0, 0, 0]
         ]
         var writes: [String] = []
+        var reads: [String] = []
 
-        func read(_ key: String) throws -> [UInt8] { values[key] ?? [] }
+        func read(_ key: String) throws -> [UInt8] {
+            reads.append(key)
+            return values[key] ?? []
+        }
         func write(_ key: String, bytes: [UInt8]) throws {
             writes.append(key)
             values[key] = bytes
@@ -35,6 +39,7 @@ final class ChargeControllerTests: XCTestCase {
         let fake = FakeSMC()
         _ = try ChargeController(smc: fake).setLimit(80)
         XCTAssertTrue(fake.writes.isEmpty)
+        XCTAssertEqual(fake.reads, ["bfF0", "bfD0", "bfE0"])
     }
 
     func testInvalidFirmwareStateDoesNotWrite() {
