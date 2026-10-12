@@ -1,6 +1,6 @@
 cask "netcharge" do
-  version "0.1.3-build.3"
-  sha256 "79fef15fe6ad39d7b0f669591ecaec04d22f3970c848e1897c078774719081ed"
+  version "0.1.3-build.4"
+  sha256 "d285b8062639662a925b7deb0f0f033637095a0ccd3d54fe69637b18a47d50ec"
 
   url "https://github.com/mohuwamg/NetCharge/releases/download/v#{version}/NetCharge-macOS-arm64.dmg"
   name "NetCharge"
