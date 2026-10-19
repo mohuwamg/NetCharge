@@ -10,7 +10,11 @@ public enum SMCError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .unavailable(let code): return "无法访问 AppleSMC（错误 \(code)）"
+        case .unavailable(let code):
+            if code == kIOReturnNotPrivileged {
+                return "macOS 已拒绝 SMC 访问，且此设备没有可用的系统充电上限"
+            }
+            return "无法访问 AppleSMC（错误 \(code)）"
         case .missingKey(let key): return "当前固件没有可用的 SMC 键 \(key)"
         case .invalidKey(let key): return "无效的 SMC 键 \(key)"
         case .invalidSize(let key, let size): return "SMC 键 \(key) 的数据长度不符：\(size)"

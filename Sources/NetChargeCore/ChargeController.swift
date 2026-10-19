@@ -5,19 +5,31 @@ public protocol SMCTransport {
     func write(_ key: String, bytes: [UInt8]) throws
 }
 
+public protocol ChargeControlling {
+    func readState() throws -> ChargeState
+    @discardableResult func setLimit(_ limit: Int) throws -> ChargeState
+}
+
+public enum ChargeBackend: String, Codable {
+    case smc
+    case native
+}
+
 public struct ChargeState: Codable, Equatable {
     public let supported: Bool
     public let active: Bool
     public let lowerLimit: Int?
     public let upperLimit: Int?
     public let error: String?
+    public let backend: ChargeBackend?
 
-    public init(supported: Bool, active: Bool, lowerLimit: Int?, upperLimit: Int?, error: String? = nil) {
+    public init(supported: Bool, active: Bool, lowerLimit: Int?, upperLimit: Int?, error: String? = nil, backend: ChargeBackend? = nil) {
         self.supported = supported
         self.active = active
         self.lowerLimit = lowerLimit
         self.upperLimit = upperLimit
         self.error = error
+        self.backend = backend
     }
 }
 
@@ -39,7 +51,7 @@ public enum ChargeError: LocalizedError {
 
 /// The firmware-managed keys are available on some Apple Silicon MacBooks.
 /// The values are probed at runtime; a matching model number alone is insufficient.
-public final class ChargeController {
+public final class ChargeController: ChargeControlling {
     private let smc: SMCTransport
     private let activation = "bfF0"
     private let upper = "bfD0"
@@ -65,7 +77,8 @@ public final class ChargeController {
             supported: true,
             active: enabled[0] == 2,
             lowerLimit: Int(lowerValue),
-            upperLimit: Int(upperValue)
+            upperLimit: Int(upperValue),
+            backend: .smc
         )
     }
 

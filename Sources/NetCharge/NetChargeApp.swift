@@ -63,8 +63,14 @@ final class DashboardModel: ObservableObject {
            let report = try? JSONDecoder().decode(HelperReport.self, from: data),
            Date().timeIntervalSince(report.updatedAt) < 180 {
             chargeState = report.state
-            if !busy, let upper = report.state.upperLimit, report.state.active {
-                selectedLimit = Double(upper)
+            if !busy {
+                if report.state.active, let upper = report.state.upperLimit {
+                    selectedLimit = Double(upper)
+                } else if report.state.error == nil {
+                    selectedLimit = 100
+                } else if report.state.backend == .native {
+                    selectedLimit = max(80, selectedLimit)
+                }
             }
         } else {
             chargeState = nil
@@ -262,20 +268,34 @@ private struct DashboardView: View {
                     Text("未读取到电池").foregroundStyle(.secondary)
                 }
                 if let state = model.chargeState {
-                    Text(state.active ? "充电上限 \(state.upperLimit ?? 0)%" : "充电上限已关闭")
+                    if let error = state.error {
+                        if state.active, let limit = state.upperLimit {
+                            Text("当前上限 \(limit)% · \(error)").foregroundStyle(.secondary)
+                        } else {
+                            Text(error).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text(state.active ? "\(state.backend == .native ? "系统充电上限" : "充电上限") \(state.upperLimit ?? 0)%" : "充电上限已关闭")
+                    }
                 } else {
                     Text("控制服务未运行或状态不可用").foregroundStyle(.secondary)
                 }
                 if model.helperInstalled {
                     HStack {
-                        Slider(value: $model.selectedLimit, in: 10...100, step: 5)
+                        Slider(value: $model.selectedLimit, in: model.chargeState?.backend == .native ? 80...100 : 10...100, step: 5)
                         Text("\(Int(model.selectedLimit))%")
                             .monospacedDigit()
                             .frame(width: 42, alignment: .trailing)
                     }
                     Button(model.busy ? "正在处理…" : "设置充电上限") { model.applyLimit() }
                         .disabled(model.busy || model.chargeState == nil)
-                    Text("100% 表示关闭上限。修改时需要管理员授权。")
+                    if model.chargeState == nil || model.chargeState?.error != nil {
+                        Button("更新或修复充电控制服务") { model.installHelper() }
+                            .disabled(model.busy)
+                    }
+                    Text(model.chargeState?.backend == .native
+                         ? "系统支持 80%–100%。100% 表示关闭上限；恢复充电由 macOS 决定。"
+                         : "100% 表示关闭上限。修改时需要管理员授权。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {

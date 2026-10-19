@@ -9,7 +9,8 @@ let package = Package(
         .executable(name: "netcharge-helper", targets: ["NetChargeHelper"])
     ],
     targets: [
-        .target(name: "NetChargeCore"),
+        .target(name: "NetChargeNative", publicHeadersPath: "include"),
+        .target(name: "NetChargeCore", dependencies: ["NetChargeNative"]),
         .executableTarget(name: "NetCharge", dependencies: ["NetChargeCore"]),
         .executableTarget(name: "NetChargeHelper", dependencies: ["NetChargeCore"]),
         .testTarget(name: "NetChargeCoreTests", dependencies: ["NetChargeCore"])

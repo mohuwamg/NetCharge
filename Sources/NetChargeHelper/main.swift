@@ -49,8 +49,28 @@ private func writeJSON<T: Encodable>(_ value: T, path: String) throws {
     }
 }
 
-private func controller() throws -> ChargeController {
-    ChargeController(smc: try SMCClient())
+private func controller() throws -> any ChargeControlling {
+    do {
+        let service = ChargeController(smc: try SMCClient())
+        _ = try service.readState()
+        return service
+    } catch {
+        if let native = NativeChargeController() { return native }
+        throw error
+    }
+}
+
+private func recordFailure(_ error: Error) {
+    let current = try? controller().readState()
+    let state = ChargeState(
+        supported: current?.supported ?? false,
+        active: current?.active ?? false,
+        lowerLimit: current?.lowerLimit,
+        upperLimit: current?.upperLimit,
+        error: error.localizedDescription,
+        backend: current?.backend
+    )
+    try? writeJSON(Report(state: state, updatedAt: Date()), path: statusPath)
 }
 
 private func probe() throws {
@@ -64,10 +84,15 @@ private func setLimit(_ value: Int) throws {
     guard geteuid() == 0 else { throw NSError(domain: "NetCharge", code: 1, userInfo: [NSLocalizedDescriptionKey: "设置充电上限需要管理员授权"]) }
     guard (10...100).contains(value) else { throw ChargeError.invalidLimit }
     try withExclusiveLock {
-        let service = try controller()
-        let state = try service.setLimit(value)
-        try writeJSON(Configuration(upperLimit: value), path: configPath)
-        try writeJSON(Report(state: state, updatedAt: Date()), path: statusPath)
+        do {
+            let service = try controller()
+            let state = try service.setLimit(value)
+            try writeJSON(Configuration(upperLimit: value), path: configPath)
+            try writeJSON(Report(state: state, updatedAt: Date()), path: statusPath)
+        } catch {
+            recordFailure(error)
+            throw error
+        }
     }
 }
 
@@ -85,14 +110,19 @@ private func adoptCurrentLimit() throws {
 
 private func maintainOnce() throws {
     try withExclusiveLock {
-        let service = try controller()
-        let state: ChargeState
-        if let configuration = try readConfiguration() {
-            state = try service.setLimit(configuration.upperLimit)
-        } else {
-            state = try service.readState()
+        do {
+            let service = try controller()
+            let state: ChargeState
+            if let configuration = try readConfiguration() {
+                state = try service.setLimit(configuration.upperLimit)
+            } else {
+                state = try service.readState()
+            }
+            try writeJSON(Report(state: state, updatedAt: Date()), path: statusPath)
+        } catch {
+            recordFailure(error)
+            throw error
         }
-        try writeJSON(Report(state: state, updatedAt: Date()), path: statusPath)
     }
 }
 

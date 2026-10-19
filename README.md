@@ -5,7 +5,7 @@ NetCharge 是用 Swift 编写的 macOS 菜单栏工具：菜单栏以红点和�
 ## 系统要求
 
 - macOS 13 或更新版本的 Apple Silicon MacBook。
-- 充电上限功能要求固件允许读写 `bfF0`、`bfD0`、`bfE0` SMC 键。网络速度显示不依赖这些键。
+- 充电控制会优先使用固件的 `bfF0`、`bfD0`、`bfE0` SMC 键；若系统限制这些键，则在支持的 Mac 上使用 macOS 自带的充电上限。网速显示不依赖充电控制。
 
 ## 安装
 
@@ -40,18 +40,19 @@ DMG、ZIP 和 Homebrew 安装的 App 都经过临时签名，**未经过 Apple �
 ## 首次启用充电上限
 
 1. 点击菜单栏中的网速显示，打开 NetCharge 面板。
-2. 点击「安装充电控制服务」，在 macOS 弹出的授权对话框中输入管理员密码。这一步会安装 NetCharge 自带的 Swift 后台服务，并在接管时停用已识别的 `batt` LaunchDaemon；不会调用 `batt` 来控制充电。
-3. 在滑块上选择目标上限（10%–95%，每档 5%），点击「设置充电上限」并完成管理员授权。选择 100% 表示关闭上限。下限自动设为上限减 2%。
-4. 面板出现「充电上限 80%」之类的状态后，可用下面的只读命令独立检查固件实际读回值：
+2. 点击「安装充电控制服务」，在 macOS 弹出的授权对话框中输入管理员密码。这一步会安装 NetCharge 自带的后台服务，并在接管时停用已识别的 `batt` LaunchDaemon；不会调用 `batt` 来控制充电。更新 App 后如果看到「更新或修复充电控制服务」，也要点击一次，以替换旧版服务。
+3. 在滑块上选择目标上限，点击「设置充电上限」并完成管理员授权。可直接访问 SMC 的机器支持 10%–95%（每档 5%），下限为上限减 2%；系统原生控制模式只支持 80%、85%、90%、95%，恢复充电由 macOS 决定。选择 100% 表示关闭上限。
+4. 面板出现「充电上限 80%」之类的状态后，可用下面的只读命令核对控制状态：
 
    ```bash
    /Applications/NetCharge.app/Contents/Resources/netcharge-helper probe
    pmset -g batt
+   pmset -g battlimit
    ```
 
-   `probe` 输出中的 `active` 应为 `true`，`upperLimit` 应为所设数值。`pmset` 用于查看当前电量和是否正在充电。菜单栏的电量百分比与固件控制值可能相差几个百分点；判断是否仍在充电时，还应看「充电中」状态。
+   `probe` 输出中的 `active` 应为 `true`，`upperLimit` 应为所设数值。`backend` 为 `smc` 时读回 SMC 固件值；为 `native` 时使用系统充电上限，可再用 `pmset -g battlimit` 独立确认。`pmset -g batt` 用于查看当前电量和是否正在充电。菜单栏的电量百分比与控制目标可能相差几个百分点；判断是否仍在充电时，还应看「充电中」状态。
 
-若固件不支持这些键或拒绝写入，应用会报告错误。控制服务安装后每 60 秒核对一次固件上限，状态保存在 `/Library/Application Support/NetCharge/status.json`。
+若 SMC 和系统原生控制都不可用，应用会报告错误。控制服务安装后每 60 秒核对一次上限，状态保存在 `/Library/Application Support/NetCharge/status.json`。系统原生接口属于 macOS 未公开接口，系统升级后可能变化；NetCharge 会按读回值报告结果，不会仅凭设置请求显示成功。
 
 ## 资源消耗
 
