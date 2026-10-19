@@ -15,6 +15,8 @@ NetCharge 是用 Swift 编写的 macOS 菜单栏工具：菜单栏以红点和�
 2. 如果已运行旧版本，先在菜单栏面板中点击「退出 NetCharge」。把 DMG 中的 `NetCharge.app` 拖到「Applications」文件夹；Finder 提示时选择「替换」。
 3. 从「应用程序」打开 NetCharge。它只显示在菜单栏，不显示 Dock 图标。无需安装 Xcode、Swift 或 Git。
 
+重复打开 NetCharge 时，已有实例继续运行，新启动的进程会自动退出，菜单栏只保留一个网速显示。
+
 Release 也保留 `NetCharge-macOS-arm64.zip`：解压后把 `NetCharge.app` 放入「应用程序」即可。
 
 ### 使用 Homebrew

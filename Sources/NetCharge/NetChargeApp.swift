@@ -318,7 +318,22 @@ private struct DashboardView: View {
 
 @main
 struct NetChargeApp: App {
+    private static let instanceLock: SingleInstanceLock = {
+        do {
+            return try SingleInstanceLock()
+        } catch SingleInstanceLock.LockError.alreadyRunning {
+            exit(EXIT_SUCCESS)
+        } catch {
+            NSLog("NetCharge could not acquire its single-instance lock: %@", String(describing: error))
+            exit(EXIT_FAILURE)
+        }
+    }()
+
     @NSApplicationDelegateAdaptor(NetChargeDelegate.self) private var delegate
+
+    init() {
+        _ = Self.instanceLock
+    }
 
     var body: some Scene {
         Settings { EmptyView() }
